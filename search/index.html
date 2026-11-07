@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Railroad Archive Search</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: #ffffff; --ink: #1d1f21; --muted: #5d6166; --line: #dedbd2;
+    --accent: #8a3b12; --accent-soft: #f4e3d7; --mark: #ffe08a; --chip: #ecebe6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181a; --panel: #212326; --ink: #e8e6e1; --muted: #a2a5aa; --line: #34373b;
+      --accent: #e39a6b; --accent-soft: #3a2a20; --mark: #6b5414; --chip: #2c2f33;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181a; --panel: #212326; --ink: #e8e6e1; --muted: #a2a5aa; --line: #34373b;
+    --accent: #e39a6b; --accent-soft: #3a2a20; --mark: #6b5414; --chip: #2c2f33;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 28px 16px 12px; max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 18px; font-size: 0.95rem; }
+  .searchbar { display: flex; gap: 8px; }
+  #q { flex: 1; font-size: 1.1rem; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px;
+       background: var(--panel); color: var(--ink); min-width: 0; }
+  #q:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  main { max-width: 980px; margin: 0 auto; padding: 0 16px 48px; display: grid;
+         grid-template-columns: 220px 1fr; gap: 24px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  aside h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+             margin: 18px 0 6px; }
+  aside label { display: flex; gap: 8px; align-items: baseline; font-size: 0.92rem; padding: 2px 0; cursor: pointer; }
+  aside label span.n { color: var(--muted); font-size: 0.8rem; margin-left: auto; }
+  aside select { width: 100%; padding: 6px; border-radius: 8px; border: 1px solid var(--line);
+                 background: var(--panel); color: var(--ink); }
+  #status { color: var(--muted); font-size: 0.92rem; margin: 14px 0 10px; min-height: 1.4em; }
+  .doc { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+         margin-bottom: 12px; }
+  .doc h3 { margin: 0 0 2px; font-size: 1.05rem; }
+  .meta { color: var(--muted); font-size: 0.82rem; margin-bottom: 8px; word-break: break-word; }
+  .chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 1px 8px;
+          font-size: 0.75rem; margin-right: 6px; color: var(--ink); }
+  .hit { border-top: 1px solid var(--line); padding: 8px 0 4px; }
+  .hit:first-of-type { border-top: 0; }
+  .hit .pg { font-size: 0.82rem; font-weight: 600; color: var(--accent); margin-right: 8px; }
+  .hit .ex { font-size: 0.93rem; }
+  mark { background: var(--mark); color: inherit; padding: 0 1px; border-radius: 2px; }
+  .actions { margin-top: 4px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .actions button, .actions a { font: inherit; font-size: 0.82rem; color: var(--accent); background: none;
+                                 border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+  .fulltext { white-space: pre-wrap; background: var(--accent-soft); border-radius: 8px; padding: 10px 12px;
+              font-size: 0.86rem; margin-top: 8px; max-height: 420px; overflow: auto; }
+  .more-pages { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+  #more { display: none; margin: 8px auto; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line);
+          background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; }
+  .tips { color: var(--muted); font-size: 0.88rem; }
+  .tips code { background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <p id="home" hidden style="margin:0 0 6px;font-size:.9rem"><a href="../" style="color:var(--accent)">&larr; The Locomotive Archive</a></p>
+  <h1>Railroad Archive Search</h1>
+  <p class="sub" id="sub">Full text of scanned railroad drawings, manuals, standards, books and periodicals.</p>
+  <div class="searchbar">
+    <input id="q" type="search" placeholder="e.g. Coale safety valve, 15F boiler, staybolt, crank pin" autofocus
+           autocomplete="off" aria-label="Search the archive">
+  </div>
+</header>
+<main>
+  <aside>
+    <h2>Material</h2>
+    <div id="f-material"></div>
+    <h2>Collection</h2>
+    <select id="f-collection"><option value="">All collections</option></select>
+  </aside>
+  <section>
+    <div id="status"></div>
+    <div id="results"></div>
+    <button id="more">Show more results</button>
+    <div class="tips" id="tips">
+      <p><b>Tips:</b> All words must match. Search by part (<code>injector</code>), class (<code>15F</code>),
+        drawing number (<code>S106350</code>), maker (<code>Baldwin</code>) or place
+        (<code>Bloemfontein</code>). Use the filters on the left to narrow results.</p>
+      <p>Text comes from OCR of old scans, so spelling in the source may be imperfect. Try a different word
+        if you don't find something.</p>
+    </div>
+  </section>
+</main>
+<script type="module">
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const PAGE_DOCS = 10;      // documents shown per "page" of results
+const MAX_HITS_PER_DOC = 3;
+
+let pagefind, docs = {}, usb = false, scans = {};
+let current = null, shownDocs = 0, loaded = 0, groups = new Map(), order = [];
+
+async function init() {
+  pagefind = await import("./pagefind/pagefind.js");
+  await pagefind.options({ excerptLength: 28 });
+  docs = await fetch("./docs.json").then((r) => r.json()).catch(() => ({}));
+  scans = await fetch("./scan-links.json").then((r) => r.json()).catch(() => ({}));  // doc -> [Internet Archive item, first page]
+  if (location.pathname.includes("/search/")) $("#home").hidden = false;
+  try { usb = (await fetch("./api/status").then((r) => r.json())).usb; } catch { usb = false; }
+  const filters = await pagefind.filters();
+  const mat = Object.entries(filters.material || {}).sort((a, b) => b[1] - a[1]);
+  $("#f-material").innerHTML = mat.map(([k, n]) =>
+    `<label><input type="checkbox" value="${esc(k)}"> ${esc(k)} <span class="n">${n.toLocaleString()}</span></label>`).join("");
+  const col = Object.entries(filters.collection || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  $("#f-collection").innerHTML += col.map(([k, n]) => `<option value="${esc(k)}">${esc(k)} (${n.toLocaleString()})</option>`).join("");
+  const total = Object.values(filters.material || {}).reduce((a, b) => a + b, 0);
+  $("#sub").textContent = `${total.toLocaleString()} pages from ${Object.keys(docs).length.toLocaleString()} documents — `
+    + "scanned railroad drawings, manuals, standards, books and periodicals.";
+  $("#q").addEventListener("input", debounce(run, 250));
+  $("#f-material").addEventListener("change", run);
+  $("#f-collection").addEventListener("change", run);
+  $("#more").addEventListener("click", showMore);
+  const q = new URLSearchParams(location.search).get("q");
+  if (q) { $("#q").value = q; run(); }
+}
+
+function debounce(fn, ms) { let t; return () => { clearTimeout(t); t = setTimeout(fn, ms); }; }
+
+function activeFilters() {
+  const f = {};
+  const m = [...document.querySelectorAll("#f-material input:checked")].map((i) => i.value);
+  if (m.length) f.material = { any: m };
+  const c = $("#f-collection").value;
+  if (c) f.collection = c;
+  return f;
+}
+
+async function run() {
+  const q = $("#q").value.trim();
+  const url = new URL(location.href);
+  q ? url.searchParams.set("q", q) : url.searchParams.delete("q");
+  history.replaceState(null, "", url);
+  $("#results").innerHTML = ""; $("#more").style.display = "none";
+  groups = new Map(); order = []; shownDocs = 0; loaded = 0;
+  if (!q) { $("#status").textContent = ""; $("#tips").style.display = ""; current = null; return; }
+  $("#tips").style.display = "none";
+  $("#status").textContent = "Searching…";
+  const search = await pagefind.search(q, { filters: activeFilters() });
+  if ($("#q").value.trim() !== q) return;  // a newer search started
+  current = search;
+  $("#status").textContent = search.results.length
+    ? `${search.results.length.toLocaleString()} matching pages`
+    : "No matches. Try fewer or different words, or clear the filters.";
+  await showMore();
+}
+
+// Load page hits in score order and group them by document.
+async function showMore() {
+  const search = current;
+  if (!search) return;
+  const want = shownDocs + PAGE_DOCS;
+  while (order.length < want && loaded < search.results.length) {
+    const batch = search.results.slice(loaded, loaded + 30);
+    loaded += batch.length;
+    const datas = await Promise.all(batch.map((r) => r.data()));
+    if (search !== current) return;
+    for (const d of datas) {
+      const id = d.meta.doc;
+      if (!groups.has(id)) { groups.set(id, []); order.push(id); }
+      groups.get(id).push(d);
+    }
+  }
+  const frag = document.createDocumentFragment();
+  for (const id of order.slice(shownDocs, want)) frag.appendChild(renderDoc(id, groups.get(id)));
+  shownDocs = Math.min(want, order.length);
+  $("#results").appendChild(frag);
+  $("#more").style.display = (shownDocs < order.length || loaded < search.results.length) ? "block" : "none";
+}
+
+function renderDoc(id, hits) {
+  const info = docs[id] || { t: hits[0].meta.title, path: "", n: "?", m: "", c: "" };
+  const el = document.createElement("article");
+  el.className = "doc";
+  const folder = info.path ? info.path.split("\\").slice(0, -1).join(" / ") : "";
+  el.innerHTML = `<h3>${esc(info.t)}</h3>
+    <div class="meta">${info.m ? `<span class="chip">${esc(info.m)}</span>` : ""}${esc(folder)}
+      · ${info.n} page${info.n == 1 ? "" : "s"}</div>`;
+  for (const h of hits.slice(0, MAX_HITS_PER_DOC)) el.appendChild(renderHit(id, info, h));
+  if (hits.length > MAX_HITS_PER_DOC) {
+    const more = document.createElement("div");
+    more.className = "more-pages";
+    more.textContent = `Also on pages ${hits.slice(MAX_HITS_PER_DOC).map((h) => Number(h.meta.page)).sort((a, b) => a - b).join(", ")}`;
+    el.appendChild(more);
+  }
+  return el;
+}
+
+function renderHit(id, info, h) {
+  const div = document.createElement("div");
+  div.className = "hit";
+  const page = h.meta.page;
+  const showPage = info.n > 1;
+  div.innerHTML = `${showPage ? `<span class="pg">Page ${esc(page)}</span>` : ""}<span class="ex">${h.excerpt}</span>
+    <div class="actions">
+      <button type="button" data-act="text">Show full page text</button>
+      ${scans[id] ? `<a href="${scanUrl(id, page)}" target="_blank" rel="noopener">View scan</a>` : ""}
+      ${usb ? `<a href="./original/${id}/${page}" target="_blank" rel="noopener">Open original scan (USB)</a>` : ""}
+    </div>`;
+  div.querySelector('[data-act="text"]').addEventListener("click", (e) => {
+    let box = div.querySelector(".fulltext");
+    if (box) { box.remove(); e.target.textContent = "Show full page text"; return; }
+    box = document.createElement("div");
+    box.className = "fulltext";
+    // Content starts with the title and folder added for indexing; show only the page text.
+    box.textContent = stripHeading(h.content, info);
+    div.appendChild(box);
+    e.target.textContent = "Hide page text";
+  });
+  return div;
+}
+
+// The page's place in its Internet Archive item: n is counted from 0 there.
+function scanUrl(id, page) {
+  const [item, first] = scans[id];
+  return `https://archive.org/details/${item}/page/n${first - 1 + Number(page) - 1}/mode/1up`;
+}
+
+function stripHeading(content, info) {
+  const folder = info.path ? info.path.split("\\").slice(0, -1).join(" / ") : "";
+  let c = content;
+  if (info.t && c.startsWith(info.t)) c = c.slice(info.t.length).replace(/^\.?\s*/, "");
+  if (folder && c.startsWith(folder)) c = c.slice(folder.length).replace(/^\.?\s*/, "");
+  if (folder && c.endsWith(folder + ".")) c = c.slice(0, -folder.length - 1);
+  return c.trim() || "(No text on this page — open the original scan to see it.)";
+}
+
+init().catch((err) => {
+  $("#status").textContent = "The search index could not be loaded. If you opened this file directly, "
+    + "use the 'Search the archive' shortcut instead.";
+  console.error(err);
+});
+</script>
+</body>
+</html>
