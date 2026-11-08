@@ -222,8 +222,8 @@ function renderHit(id, info, h) {
 
 // The page's place in its Internet Archive item: n is counted from 0 there.
 function scanUrl(id, page) {
-  const [item, first] = scans[id];
-  return `https://archive.org/details/${item}/page/n${first - 1 + Number(page) - 1}/mode/1up`;
+  const [file, first] = scans[id];
+  return `https://huggingface.co/datasets/Steamer375/locomotive-archive/resolve/main/${file}#page=${first - 1 + Number(page)}`;
 }
 
 function stripHeading(content, info) {
